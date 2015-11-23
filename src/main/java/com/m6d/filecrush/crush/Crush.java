@@ -320,9 +320,6 @@ public class Crush extends Configured implements Tool {
 		 */
 		job.set("mapred.fairscheduler.preemption", "false");
 
-		tmpDir = new Path("tmp/crush-" + UUID.randomUUID());
-		outDir = new Path(tmpDir, "out");
-
 		double threshold = 0.75;
 
 		List<String> regexes			= asList(".+");
@@ -492,6 +489,12 @@ public class Crush extends Configured implements Tool {
 			maxEligibleSize = (long) (dfsBlockSize * threshold);
 		}
 
+		Pattern p = Pattern.compile("^(/?[^/]+)");
+		Matcher m = p.matcher(srcDir.toString());
+		m.find();
+
+		tmpDir = new Path(m.group() + "tmp/crush-" + UUID.randomUUID());
+		outDir = new Path(tmpDir, "out");
 		/*
 		 * Add the crush specs and compression options to the configuration.
 		 */
