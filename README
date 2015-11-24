@@ -1,3 +1,6 @@
+### Note:
+This repo has been forked from the original repo. This version creates the tmp directory in the same root directory as the input-dir so data is not moved across encrytion zones when your cluser has on-disk encryption.
+
 Hadoop filecrusher.
 
 Turn many small files into fewer larger ones. Also change from text to sequence and other compression options in one pass.
@@ -207,9 +210,6 @@ This will yield:
 
 Notice subdir has two files whose names differ only by the ${crush.file.num} value. Without the ${crush.file.num}, file names are not guaranteed to be unique.
 
-NOTES
-
-This program creates a temporary directories in "tmp" of the executing user's home directory in dfs.
 
 https://zenodo.org/badge/doi/10.5281/zenodo.11038.png
 
