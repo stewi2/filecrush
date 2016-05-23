@@ -493,7 +493,7 @@ public class Crush extends Configured implements Tool {
 		Matcher m = p.matcher(srcDir.toString());
 		m.find();
 
-		tmpDir = new Path(m.group() + "tmp/crush-" + UUID.randomUUID());
+		tmpDir = new Path(m.group() + "/tmp/crush-" + UUID.randomUUID());
 		outDir = new Path(tmpDir, "out");
 		/*
 		 * Add the crush specs and compression options to the configuration.
