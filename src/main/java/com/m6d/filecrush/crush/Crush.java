@@ -43,6 +43,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileStatus;
@@ -302,6 +303,14 @@ public class Crush extends Configured implements Tool {
 
 		options.addOption(option);
 
+                option = OptionBuilder
+                                .hasArg()
+                                .withDescription("The tmp dir")
+                                .withLongOpt("tmpdir")
+                                .create();
+
+                options.addOption(option);
+
 		return options;
 	}
 
@@ -489,11 +498,18 @@ public class Crush extends Configured implements Tool {
 			maxEligibleSize = (long) (dfsBlockSize * threshold);
 		}
 
-		Pattern p = Pattern.compile("^(/?[^/]+)");
-		Matcher m = p.matcher(srcDir.toString());
-		m.find();
+                String tmproot;
 
-		tmpDir = new Path(m.group() + "tmp/crush-" + UUID.randomUUID());
+                if(cli.hasOption("tmpdir")) {
+                    tmproot = cli.getOptionValue("tmpdir");
+                } else {
+                    Pattern p = Pattern.compile("^(/?[^/]+)");
+                    Matcher m = p.matcher(srcDir.toString());
+                    m.find();
+                    tmproot = m.group();
+                }
+
+		tmpDir = new Path(dest, ".crush-" + UUID.randomUUID());
 		outDir = new Path(tmpDir, "out");
 		/*
 		 * Add the crush specs and compression options to the configuration.
@@ -589,6 +605,8 @@ public class Crush extends Configured implements Tool {
 			}
 		}
 
+                job.setJobName("filecrush " + srcDir.toString());
+
 		return true;
 	}
 
@@ -618,9 +636,9 @@ public class Crush extends Configured implements Tool {
 
 		setFileSystem(FileSystem.get(job));
 
-		FileStatus status = fs.getFileStatus(srcDir);
+		FileStatus[] statuses = fs.globStatus(srcDir);
 
-		if (null == status || !status.isDir()) {
+		if (statuses.length==0) {
 			throw new IllegalArgumentException("No such directory: " + srcDir);
 		}
 
@@ -750,6 +768,8 @@ public class Crush extends Configured implements Tool {
 	}
 
 	private void cloneOutput() throws IOException {
+
+               if(nBuckets==0) return;
 
 		List<FileStatus> listStatus = getOutputMappings();
 
@@ -1008,8 +1028,6 @@ public class Crush extends Configured implements Tool {
 
 		print(Verbosity.INFO, "\n\nUsing temporary directory " + tmpDir.toUri().getPath());
 
-		FileStatus status = fs.getFileStatus(srcDir);
-
 		Path tmpIn = new Path(tmpDir, "in");
 
 		bucketFiles			= new Path(tmpIn, "dirs");
@@ -1021,7 +1039,10 @@ public class Crush extends Configured implements Tool {
 		/*
 		 * Prefer the path returned by the status because it is always fully qualified.
 		 */
-		List<Path> dirs = asList(status.getPath());
+		List<Path> dirs = new LinkedList<Path>();
+		for(FileStatus status: fs.globStatus(srcDir)) {
+			dirs.add(status.getPath());
+		}
 
 		Text key = new Text();
 		Text value = new Text();
@@ -1099,7 +1120,7 @@ public class Crush extends Configured implements Tool {
 		    		}
 
 		    		if (0 == crushableBytes) {
-		    			print(Verbosity.INFO, " has no crushable files");
+		    			print(Verbosity.VERBOSE, " has no crushable files");
 
 		    			jobCounters.incrCounter(MapperCounter.DIRS_SKIPPED, 1);
 		    		} else {
